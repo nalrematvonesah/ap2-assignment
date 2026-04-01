@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Service Tester</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>AP2 Order & Payment Tester</h1>
+
+        <div class="card">
+            <h2>Create Order</h2>
+            <input id="customerId" placeholder="Customer ID" value="cust-1">
+            <input id="itemName" placeholder="Item Name" value="MacBook">
+            <input id="amount" type="number" placeholder="Amount" value="50000">
+            <button onclick="createOrder()">Create Order</button>
+        </div>
+
+        <div class="card">
+            <h2>Order Actions</h2>
+            <input id="orderId" placeholder="Order ID">
+            <button onclick="getOrder()">Get Order</button>
+            <button onclick="cancelOrder()">Cancel Order</button>
+        </div>
+
+        <div class="card">
+            <h2>Response</h2>
+            <pre id="output">No requests yet...</pre>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
