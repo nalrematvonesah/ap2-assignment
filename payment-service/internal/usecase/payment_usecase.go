@@ -36,3 +36,7 @@ func (u *PaymentUseCase) Create(orderID string, amount int64) (*domain.Payment, 
 func (u *PaymentUseCase) GetByOrderID(orderID string) (*domain.Payment, error) {
 	return u.repo.GetByOrderID(orderID)
 }
+
+func (u *PaymentUseCase) ListByStatus(status string) ([]*domain.Payment, error) {
+	return u.repo.ListByStatus(status)
+}

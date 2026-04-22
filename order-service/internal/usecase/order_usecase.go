@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"errors"
+	grpcclient "order-service/internal/client/grpc"
 	"order-service/internal/domain"
 	"order-service/internal/repository"
 	"time"
@@ -11,12 +12,12 @@ import (
 
 type OrderUseCase struct {
 	repo          repository.OrderRepository
-	paymentClient *PaymentClient
+	paymentClient *grpcclient.PaymentClient
 }
 
 func NewOrderUseCase(
 	repo repository.OrderRepository,
-	paymentClient *PaymentClient,
+	paymentClient *grpcclient.PaymentClient,
 ) *OrderUseCase {
 	return &OrderUseCase{
 		repo:          repo,
@@ -38,24 +39,30 @@ func (u *OrderUseCase) Create(customerID, itemName string, amount int64) (*domai
 		CreatedAt:  time.Now(),
 	}
 
-	// 1. Save as pending
+	// 1. Save
 	if err := u.repo.Save(order); err != nil {
 		return nil, err
 	}
 
-	// 2. Call payment service
-	status, err := u.paymentClient.Pay(order.ID, order.Amount)
+	// 2. gRPC call
+	orderIDInt := time.Now().UnixNano()
+
+	_, err := u.paymentClient.ProcessPayment(
+		orderIDInt,
+		float64(order.Amount),
+		order.CustomerID,
+	)
+
 	if err != nil {
-		// payment unavailable → failed
 		_ = u.repo.UpdateStatus(order.ID, "Failed")
-		return nil, errors.New("payment service unavailable")
+		return nil, err
 	}
 
-	// 3. Update order status
-	if status == "Authorized" {
-		order.Status = "Paid"
-	} else {
+	// 3. status logic
+	if order.Amount > 100000 {
 		order.Status = "Failed"
+	} else {
+		order.Status = "Paid"
 	}
 
 	if err := u.repo.UpdateStatus(order.ID, order.Status); err != nil {

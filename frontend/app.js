@@ -1,49 +1,59 @@
-const API_URL = "http://localhost:8080";
+const API = "http://localhost:8080";
 
-function showResponse(data) {
-    document.getElementById("output").textContent =
-        JSON.stringify(data, null, 2);
+let interval;
+
+const statusEl = document.getElementById("status");
+
+function setStatus(status) {
+  statusEl.textContent = status;
+  statusEl.className = "badge";
+
+  if (status === "Pending") statusEl.classList.add("pending");
+  if (status === "Paid") statusEl.classList.add("paid");
+  if (status === "Failed") statusEl.classList.add("failed");
 }
 
-async function createOrder() {
-    const body = {
-        customer_id: document.getElementById("customerId").value,
-        item_name: document.getElementById("itemName").value,
-        amount: Number(document.getElementById("amount").value)
-    };
+// CREATE ORDER
+document.getElementById("orderForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const response = await fetch(`${API_URL}/orders`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-    });
+  const customer_id = document.getElementById("customerId").value;
+  const item_name = document.getElementById("itemName").value;
+  const amount = parseInt(document.getElementById("amount").value);
 
-    const data = await response.json();
-    showResponse(data);
+  const res = await fetch(`${API}/orders`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ customer_id, item_name, amount })
+  });
 
-    if (data.id) {
-        document.getElementById("orderId").value = data.id;
+  if (!res.ok) {
+    alert("Ошибка создания заказа");
+    return;
+  }
+
+  const data = await res.json();
+
+  document.getElementById("orderId").textContent = data.id;
+  document.getElementById("orderCard").classList.remove("hidden");
+
+  setStatus(data.status);
+
+  startPolling(data.id);
+});
+
+// LIVE STATUS
+function startPolling(id) {
+  clearInterval(interval);
+
+  interval = setInterval(async () => {
+    const res = await fetch(`${API}/orders/${id}`);
+    const data = await res.json();
+
+    setStatus(data.status);
+
+    if (data.status === "Paid" || data.status === "Failed") {
+      clearInterval(interval);
     }
-}
-
-async function getOrder() {
-    const id = document.getElementById("orderId").value;
-
-    const response = await fetch(`${API_URL}/orders/${id}`);
-    const data = await response.json();
-
-    showResponse(data);
-}
-
-async function cancelOrder() {
-    const id = document.getElementById("orderId").value;
-
-    const response = await fetch(`${API_URL}/orders/${id}/cancel`, {
-        method: "PATCH"
-    });
-
-    const data = await response.json();
-    showResponse(data);
+  }, 1500);
 }

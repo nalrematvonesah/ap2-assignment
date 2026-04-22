@@ -8,6 +8,7 @@ import (
 type PaymentRepository interface {
 	Save(payment *domain.Payment) error
 	GetByOrderID(orderID string) (*domain.Payment, error)
+	ListByStatus(status string) ([]*domain.Payment, error)
 }
 
 type paymentRepository struct {
@@ -35,4 +36,35 @@ func (r *paymentRepository) GetByOrderID(orderID string) (*domain.Payment, error
 	var p domain.Payment
 	err := row.Scan(&p.ID, &p.OrderID, &p.TransactionID, &p.Amount, &p.Status)
 	return &p, err
+}
+
+func (r *paymentRepository) ListByStatus(status string) ([]*domain.Payment, error) {
+	rows, err := r.db.Query(`
+		SELECT id, order_id, transaction_id, amount, status
+		FROM payments
+		WHERE status = $1
+	`, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var payments []*domain.Payment
+
+	for rows.Next() {
+		p := &domain.Payment{}
+		err := rows.Scan(
+			&p.ID,
+			&p.OrderID,
+			&p.TransactionID,
+			&p.Amount,
+			&p.Status,
+		)
+		if err != nil {
+			return nil, err
+		}
+		payments = append(payments, p)
+	}
+
+	return payments, nil
 }
