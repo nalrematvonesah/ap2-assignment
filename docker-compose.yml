@@ -1,22 +1,44 @@
 version: "3.9"
 
 services:
-  order-db:
-    image: postgres:15
-    container_name: order-db
-    environment:
-      POSTGRES_DB: order_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+  rabbitmq:
+    image: rabbitmq:3-management
     ports:
-      - "55432:5432"
+      - "5672:5672"
+      - "15672:15672"
 
-  payment-db:
-    image: postgres:15
-    container_name: payment-db
+  postgres:
+    image: postgres:17
     environment:
-      POSTGRES_DB: payment_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: payments
     ports:
-      - "55433:5432"
+      - "5432:5432"
+
+  payment-service:
+    build: ./payment-service
+    depends_on:
+      - rabbitmq
+      - postgres
+    ports:
+      - "50051:50051"
+
+  notification-service:
+    build: ./notification-service
+    depends_on:
+      - rabbitmq
+
+  gateway:
+    build: ./gateway
+    depends_on:
+      - payment-service
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - gateway
+    ports:
+      - "3000:3000"
