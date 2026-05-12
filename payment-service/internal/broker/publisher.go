@@ -35,8 +35,9 @@ func (p *Publisher) Publish(event Event) error {
 		false,
 		false,
 		amqp.Publishing{
-			ContentType: "application/json",
-			Body:        body,
+			ContentType:  "application/json",
+			Body:         body,
+			DeliveryMode: amqp.Persistent,
 		},
 	)
 
@@ -45,5 +46,6 @@ func (p *Publisher) Publish(event Event) error {
 	}
 
 	log.Println("Published event:", string(body))
+
 	return nil
 }

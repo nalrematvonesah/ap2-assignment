@@ -1,21 +1,44 @@
 package service
 
 import (
+	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
-type PaymentService struct {
-	db *sql.DB
+type Payment struct {
+	OrderID int32   `json:"order_id"`
+	Amount  float64 `json:"amount"`
+	Email   string  `json:"email"`
+	Status  string  `json:"status"`
 }
 
-func NewPaymentService(db *sql.DB) *PaymentService {
+type PaymentService struct {
+	db    *sql.DB
+	redis *redis.Client
+}
+
+func NewPaymentService(
+	db *sql.DB,
+	redis *redis.Client,
+) *PaymentService {
 	return &PaymentService{
-		db: db,
+		db:    db,
+		redis: redis,
 	}
 }
 
-func (s *PaymentService) Process(orderID int32, amount float64, email string) string {
+func (s *PaymentService) Process(
+	orderID int32,
+	amount float64,
+	email string,
+) string {
+
 	log.Printf(
 		"Processing payment: order=%d amount=%.2f email=%s",
 		orderID,
@@ -34,6 +57,24 @@ func (s *PaymentService) Process(orderID int32, amount float64, email string) st
 	if err != nil {
 		log.Println("DB insert error:", err)
 	}
+
+	payment := Payment{
+		OrderID: orderID,
+		Amount:  amount,
+		Email:   email,
+		Status:  "completed",
+	}
+
+	data, _ := json.Marshal(payment)
+
+	key := fmt.Sprintf("payment:%d", orderID)
+
+	s.redis.Set(
+		context.Background(),
+		key,
+		data,
+		10*time.Minute,
+	)
 
 	return "completed"
 }

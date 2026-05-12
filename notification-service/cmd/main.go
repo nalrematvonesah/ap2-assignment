@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -8,8 +9,10 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/redis/go-redis/v9"
 
 	"notification-service/internal/consumer"
+	"notification-service/internal/provider"
 	"notification-service/internal/service"
 )
 
@@ -18,7 +21,10 @@ func main() {
 	var err error
 
 	for i := 0; i < 10; i++ {
-		conn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		conn, err = amqp.Dial(
+			"amqp://guest:guest@rabbitmq:5672/",
+		)
+
 		if err == nil {
 			break
 		}
@@ -28,14 +34,22 @@ func main() {
 	}
 
 	if err != nil {
-		log.Fatalf("failed to connect: %v", err)
+		log.Fatalf(
+			"failed to connect RabbitMQ: %v",
+			err,
+		)
 	}
+
 	defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
-		log.Fatalf("failed to open channel: %v", err)
+		log.Fatalf(
+			"failed to open channel: %v",
+			err,
+		)
 	}
+
 	defer ch.Close()
 
 	_, err = ch.QueueDeclare(
@@ -46,8 +60,53 @@ func main() {
 		false,
 		nil,
 	)
+
 	if err != nil {
-		log.Fatalf("failed to declare queue: %v", err)
+		log.Fatalf(
+			"failed to declare queue: %v",
+			err,
+		)
+	}
+
+	err = ch.Qos(
+		1,
+		0,
+		false,
+	)
+
+	if err != nil {
+		log.Fatalf(
+			"failed to set qos: %v",
+			err,
+		)
+	}
+
+	var redisClient *redis.Client
+
+	for i := 0; i < 10; i++ {
+		redisClient = redis.NewClient(
+			&redis.Options{
+				Addr: "redis:6379",
+			},
+		)
+
+		_, err = redisClient.Ping(
+			context.Background(),
+		).Result()
+
+		if err == nil {
+			break
+		}
+
+		log.Println("Retrying Redis connection...")
+		time.Sleep(3 * time.Second)
+	}
+
+	if err != nil {
+		log.Fatalf(
+			"failed to connect redis: %v",
+			err,
+		)
 	}
 
 	msgs, err := ch.Consume(
@@ -59,12 +118,24 @@ func main() {
 		false,
 		nil,
 	)
+
 	if err != nil {
-		log.Fatalf("failed to consume: %v", err)
+		log.Fatalf(
+			"failed to consume: %v",
+			err,
+		)
 	}
 
-	svc := service.NewNotificationService()
-	c := consumer.NewConsumer(svc)
+	sender := provider.NewMockEmailSender()
+
+	svc := service.NewNotificationService(
+		sender,
+	)
+
+	c := consumer.NewConsumer(
+		svc,
+		redisClient,
+	)
 
 	log.Println("Notification Service started...")
 
@@ -84,13 +155,17 @@ func main() {
 
 	<-stop
 
-	log.Println("Shutting down Notification Service...")
+	log.Println(
+		"Shutting down Notification Service...",
+	)
 
-	log.Println("Closing RabbitMQ channel...")
+	redisClient.Close()
+
 	ch.Close()
 
-	log.Println("Closing RabbitMQ connection...")
 	conn.Close()
 
-	log.Println("Notification Service stopped")
+	log.Println(
+		"Notification Service stopped",
+	)
 }

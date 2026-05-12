@@ -16,6 +16,7 @@ import (
 	pb "github.com/nalrematvonesah/ap2-proto-contracts/gen/go/proto"
 
 	"payment-service/internal/broker"
+	"payment-service/internal/cache"
 	"payment-service/internal/database"
 	"payment-service/internal/handler"
 	"payment-service/internal/service"
@@ -59,7 +60,7 @@ func main() {
 	}
 
 	db := database.NewPostgres()
-
+	redisClient := cache.NewRedis()
 	publisher := broker.NewPublisher(ch)
 
 	lis, err := net.Listen("tcp", ":50051")
@@ -67,7 +68,10 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	svc := service.NewPaymentService(db)
+	svc := service.NewPaymentService(
+		db,
+		redisClient,
+	)
 
 	server := handler.NewServer(svc, publisher)
 
