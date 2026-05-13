@@ -23,7 +23,10 @@ func NewPublisher(ch *amqp.Channel) *Publisher {
 	return &Publisher{ch: ch}
 }
 
-func (p *Publisher) Publish(event Event) error {
+func (p *Publisher) Publish(
+	event Event,
+) error {
+
 	body, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -45,7 +48,10 @@ func (p *Publisher) Publish(event Event) error {
 		return err
 	}
 
-	log.Println("Published event:", string(body))
+	log.Println(
+		"Published event:",
+		string(body),
+	)
 
 	return nil
 }

@@ -20,24 +20,23 @@ func main() {
 	var conn *amqp.Connection
 	var err error
 
-	for i := 0; i < 10; i++ {
+	for {
 		conn, err = amqp.Dial(
 			"amqp://guest:guest@rabbitmq:5672/",
 		)
 
 		if err == nil {
+			log.Println(
+				"Connected to RabbitMQ",
+			)
 			break
 		}
 
-		log.Println("Retrying RabbitMQ connection...")
-		time.Sleep(3 * time.Second)
-	}
-
-	if err != nil {
-		log.Fatalf(
-			"failed to connect RabbitMQ: %v",
-			err,
+		log.Println(
+			"Retrying RabbitMQ connection...",
 		)
+
+		time.Sleep(3 * time.Second)
 	}
 
 	defer conn.Close()
@@ -52,8 +51,29 @@ func main() {
 
 	defer ch.Close()
 
+	args := amqp.Table{
+		"x-dead-letter-exchange":    "",
+		"x-dead-letter-routing-key": "payment.completed.dlq",
+	}
+
 	_, err = ch.QueueDeclare(
 		"payment.completed",
+		true,
+		false,
+		false,
+		false,
+		args,
+	)
+
+	if err != nil {
+		log.Fatalf(
+			"failed to declare queue: %v",
+			err,
+		)
+	}
+
+	_, err = ch.QueueDeclare(
+		"payment.completed.dlq",
 		true,
 		false,
 		false,
@@ -63,7 +83,7 @@ func main() {
 
 	if err != nil {
 		log.Fatalf(
-			"failed to declare queue: %v",
+			"failed to declare DLQ: %v",
 			err,
 		)
 	}
@@ -84,6 +104,7 @@ func main() {
 	var redisClient *redis.Client
 
 	for i := 0; i < 10; i++ {
+
 		redisClient = redis.NewClient(
 			&redis.Options{
 				Addr: "redis:6379",
@@ -95,10 +116,16 @@ func main() {
 		).Result()
 
 		if err == nil {
+			log.Println(
+				"Connected to Redis",
+			)
 			break
 		}
 
-		log.Println("Retrying Redis connection...")
+		log.Println(
+			"Retrying Redis connection...",
+		)
+
 		time.Sleep(3 * time.Second)
 	}
 
@@ -137,7 +164,9 @@ func main() {
 		redisClient,
 	)
 
-	log.Println("Notification Service started...")
+	log.Println(
+		"Notification Worker started...",
+	)
 
 	go func() {
 		for msg := range msgs {
@@ -156,16 +185,23 @@ func main() {
 	<-stop
 
 	log.Println(
-		"Shutting down Notification Service...",
+		"Shutting down Notification Worker...",
 	)
 
+	log.Println("Closing Redis...")
 	redisClient.Close()
 
+	log.Println(
+		"Closing RabbitMQ channel...",
+	)
 	ch.Close()
 
+	log.Println(
+		"Closing RabbitMQ connection...",
+	)
 	conn.Close()
 
 	log.Println(
-		"Notification Service stopped",
+		"Notification Worker stopped",
 	)
 }

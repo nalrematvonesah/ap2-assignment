@@ -8,7 +8,10 @@ import (
 )
 
 type EmailSender interface {
-	Send(to string, body string) error
+	Send(
+		to string,
+		body string,
+	) error
 }
 
 type MockEmailSender struct{}
@@ -25,7 +28,9 @@ func (m *MockEmailSender) Send(
 	time.Sleep(2 * time.Second)
 
 	if rand.Intn(100) < 40 {
-		return errors.New("simulated provider failure")
+		return errors.New(
+			"simulated provider failure",
+		)
 	}
 
 	log.Println("EMAIL SENT TO:", to)

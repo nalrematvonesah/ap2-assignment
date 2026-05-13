@@ -1,252 +1,288 @@
 ````md
-# 🚀 Event-Driven Payment Processing System
+# Payment Processing Platform
 
-<div align="center">
-
-![Go](https://img.shields.io/badge/Go-1.25-00ADD8?style=for-the-badge&logo=go)
-![gRPC](https://img.shields.io/badge/gRPC-Microservices-244c5a?style=for-the-badge&logo=grpc)
-![RabbitMQ](https://img.shields.io/badge/RabbitMQ-EventDriven-FF6600?style=for-the-badge&logo=rabbitmq)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?style=for-the-badge&logo=postgresql)
-![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker)
-![Next.js](https://img.shields.io/badge/Next.js-Frontend-black?style=for-the-badge&logo=next.js)
-
-Production-style distributed microservices system built with Go, gRPC, RabbitMQ, PostgreSQL, Docker, and Next.js.
-
-</div>
+Production-style event-driven microservices system built with Go, gRPC, RabbitMQ, PostgreSQL, Redis, Docker, and Next.js.
 
 ---
 
-# ✨ Features
-
-- ⚡ gRPC communication
-- 📨 RabbitMQ event-driven architecture
-- 🗄 PostgreSQL persistence
-- 🌐 API Gateway
-- 🎨 Modern Next.js frontend
-- 🐳 Dockerized infrastructure
-- ♻ Retry connection logic
-- ✅ Manual ACK handling
-- 🛡 Idempotency protection
-- 🧹 Graceful shutdown
-- 🔥 Production-style architecture
-
----
-
-# 🏗 Architecture
+# Architecture
 
 ```text
-┌──────────────────────┐
-│      Frontend        │
-│      Next.js         │
-└──────────┬───────────┘
-           │ HTTP
-           ▼
-┌──────────────────────┐
-│      API Gateway     │
-│      Gin (Go)        │
-└──────────┬───────────┘
-           │ gRPC
-           ▼
-┌──────────────────────┐
-│    Payment Service   │
-│        Go            │
-└───────┬───────┬──────┘
-        │       │
-        │       │
-        ▼       ▼
-┌────────────┐  ┌──────────────┐
-│ PostgreSQL │  │  RabbitMQ    │
-└────────────┘  └──────┬───────┘
-                       │ Event
-                       ▼
-              ┌──────────────────┐
-              │ Notification     │
-              │ Service          │
-              └──────────────────┘
+Frontend (Next.js)
+        ↓ HTTP
+Gateway API (Gin)
+        ↓ gRPC
+Payment Service
+   ├── PostgreSQL
+   ├── Redis Cache
+   └── RabbitMQ Publisher
+                ↓
+          RabbitMQ Queue
+                ↓
+      Notification Worker
+         ├── Retry Logic
+         ├── DLQ
+         ├── Redis Idempotency
+         └── Email Provider Adapter
 ````
 
 ---
 
-# 🧩 Services
+# Tech Stack
 
-## 🌐 Frontend
-
-Modern UI built with:
-
-* Next.js
-* TailwindCSS
-* React
-
-Responsibilities:
-
-* Payment form
-* User interaction
-* API communication
+| Technology     | Purpose                        |
+| -------------- | ------------------------------ |
+| Go             | Backend services               |
+| gRPC           | Internal service communication |
+| RabbitMQ       | Event broker                   |
+| PostgreSQL     | Persistent storage             |
+| Redis          | Cache + idempotency            |
+| Docker Compose | Infrastructure orchestration   |
+| Next.js        | Frontend                       |
+| Gin            | API Gateway                    |
 
 ---
 
-## 🚪 API Gateway
+# Features
 
-Built with:
+## Distributed Architecture
 
-* Go
-* Gin
-
-Responsibilities:
-
-* HTTP API
-* Request validation
-* gRPC client communication
-* CORS handling
+* Event-driven communication
+* Asynchronous processing
+* Background workers
+* Service isolation
 
 ---
 
-## 💳 Payment Service
+## Reliability
 
-Built with:
-
-* Go
-* gRPC
-* PostgreSQL
-* RabbitMQ
-
-Responsibilities:
-
-* Payment processing
-* Database persistence
-* Event publishing
+* Retry strategy
+* Exponential backoff
+* Dead Letter Queue (DLQ)
+* Manual ACK/NACK
+* Persistent RabbitMQ messages
+* Graceful shutdown
 
 ---
 
-## 🔔 Notification Service
+## Performance
 
-Built with:
-
-* Go
-* RabbitMQ
-
-Responsibilities:
-
-* Event consumption
-* Notification handling
-* Manual ACK processing
-* Idempotency validation
+* Redis cache-aside pattern
+* Reduced database load
+* Fast in-memory idempotency checks
 
 ---
 
-# 📨 Event Flow
+## Scalability
+
+* Independent services
+* Horizontal worker scaling
+* Queue-based workload distribution
+
+---
+
+# Services
+
+## Frontend
+
+Next.js UI for payment processing.
+
+### Port
+
+3000
+
+---
+
+## Gateway
+
+HTTP API gateway using Gin.
+
+### Responsibilities
+
+* Receives HTTP requests
+* Validates payloads
+* Calls Payment Service via gRPC
+
+### Port
+
+8080
+
+---
+
+## Payment Service
+
+Core payment processing service.
+
+### Responsibilities
+
+* Processes payments
+* Stores data in PostgreSQL
+* Caches payment data in Redis
+* Publishes RabbitMQ events
+
+### Port
+
+50051
+
+---
+
+## Notification Worker
+
+Background worker consuming RabbitMQ events.
+
+### Responsibilities
+
+* Consumes events asynchronously
+* Sends notifications
+* Retries failed jobs
+* Uses Redis idempotency
+* Sends failed messages to DLQ
+
+---
+
+# Infrastructure
+
+## RabbitMQ
+
+### Ports
+
+| Port  | Purpose       |
+| ----- | ------------- |
+| 5672  | AMQP          |
+| 15672 | Management UI |
+
+### UI
+
+[http://localhost:15672](http://localhost:15672)
+
+Credentials:
+
+guest
+guest
+
+---
+
+## PostgreSQL
+
+### Port
+
+5432
+
+---
+
+## Redis
+
+### Port
+
+6379
+
+---
+
+# Project Structure
 
 ```text
-Frontend
-   ↓ HTTP
-Gateway
-   ↓ gRPC
-Payment Service
-   ↓
-Store payment in PostgreSQL
-   ↓
-Publish event to RabbitMQ
-   ↓
-Notification Service consumes event
+.
+├── frontend
+├── gateway
+├── payment-service
+├── notification-service
+├── docker-compose.yml
+└── README.md
 ```
 
 ---
 
-# 🛡 Reliability Features
+# Queue Topology
 
-## ✅ Manual ACK
+## Main Queue
 
-Messages are acknowledged only after successful processing.
+payment.completed
 
-```go
-msg.Ack(false)
-```
-
-Prevents message loss.
+Processes successful payment events.
 
 ---
 
-## ♻ Retry Logic
+## Dead Letter Queue
 
-Services retry connections automatically during startup.
+payment.completed.dlq
 
-Improves resilience in distributed environments.
-
----
-
-## 🛡 Idempotency
-
-Duplicate events are ignored using processed event tracking.
+Stores failed events after retries.
 
 ---
 
-## 🧹 Graceful Shutdown
+# Event Flow
 
-Services correctly close:
-
-* gRPC servers
-* RabbitMQ channels
-* PostgreSQL connections
-
----
-
-# 🐳 Dockerized Infrastructure
-
-The entire system runs inside Docker containers using Docker Compose.
-
-Services:
-
-* frontend
-* gateway
-* payment-service
-* notification-service
-* rabbitmq
-* postgres
-
----
-
-# 📁 Project Structure
+## Payment Processing
 
 ```text
-ap2-assignment/
-│
-├── frontend/
-├── gateway/
-├── payment-service/
-├── notification-service/
-├── order-service/
-├── ap2-proto-contracts/
-│
-└── docker-compose.yml
+1. Frontend sends HTTP request
+2. Gateway receives request
+3. Gateway calls Payment Service via gRPC
+4. Payment Service stores payment in PostgreSQL
+5. Payment Service caches payment in Redis
+6. Payment Service publishes RabbitMQ event
+7. Notification Worker consumes event
+8. Notification Worker sends notification
+9. Worker ACKs message
 ```
 
 ---
 
-# ⚙️ Technologies Used
+# Retry Flow
 
-| Technology  | Purpose                     |
-| ----------- | --------------------------- |
-| Go          | Backend services            |
-| gRPC        | Inter-service communication |
-| RabbitMQ    | Event broker                |
-| PostgreSQL  | Database                    |
-| Docker      | Containerization            |
-| Next.js     | Frontend                    |
-| TailwindCSS | UI styling                  |
-
----
-
-# 🚀 Getting Started
-
-## 1️⃣ Clone repository
-
-```bash
-git clone <your-repository>
+```text
+Message received
+      ↓
+Processing failed
+      ↓
+Retry with exponential backoff
+      ↓
+Still failing
+      ↓
+NACK(false, false)
+      ↓
+DLQ
 ```
 
 ---
 
-## 2️⃣ Start system
+# Cache-Aside Pattern
+
+```text
+Request
+   ↓
+Redis lookup
+   ↓ hit
+Return cached data
+
+OR
+
+Redis miss
+   ↓
+PostgreSQL query
+   ↓
+Save to Redis
+   ↓
+Return data
+```
+
+---
+
+# Idempotency
+
+Notification Worker prevents duplicate processing using Redis.
+
+### Key format
+
+```text
+event:<event_id>
+```
+
+---
+
+# Running the Project
+
+## Build and start
 
 ```bash
 docker compose up --build
@@ -254,78 +290,142 @@ docker compose up --build
 
 ---
 
-# 🌐 Available Services
+## Stop containers
 
-| Service     | URL                                              |
-| ----------- | ------------------------------------------------ |
-| Frontend    | [http://localhost:3000](http://localhost:3000)   |
-| Gateway API | [http://localhost:8080](http://localhost:8080)   |
-| RabbitMQ UI | [http://localhost:15672](http://localhost:15672) |
-
----
-
-# 🔑 RabbitMQ Credentials
-
-```text
-Username: guest
-Password: guest
+```bash
+docker compose down
 ```
 
 ---
 
-# 🧪 Example Workflow
+## Remove volumes
 
-1. Open frontend
-2. Submit payment
-3. Gateway sends gRPC request
-4. Payment stored in PostgreSQL
-5. Event published to RabbitMQ
-6. Notification Service processes event
-
----
-
-# 📸 UI Preview
-
-```text
-Modern glassmorphism payment dashboard
-with animated gradients and live processing state
+```bash
+docker compose down -v
 ```
 
 ---
 
-# 🔥 Production Concepts Demonstrated
+# API
 
-* Distributed Systems
-* Event-Driven Architecture
-* API Gateway Pattern
-* Producer / Consumer Pattern
-* Retry Pattern
-* Idempotency Pattern
-* Graceful Shutdown Pattern
+## Process Payment
+
+### Endpoint
+
+POST /payments
+
+### Example Request
+
+```json
+{
+  "order_id": 1,
+  "amount": 250,
+  "email": "user@test.com"
+}
+```
+
+### Example Response
+
+```json
+{
+  "status": "completed"
+}
+```
 
 ---
 
-# 🚀 Future Improvements
+# Redis Inspection
 
-* JWT Authentication
-* Redis caching
-* Kubernetes deployment
-* CI/CD pipelines
-* Prometheus & Grafana monitoring
-* WebSocket live events
-* Email notifications
-* Dead Letter Queues (DLQ)
+Open Redis CLI:
+
+```bash
+docker exec -it ap2-assignment-redis-1 redis-cli
+```
+
+### List keys
+
+```redis
+KEYS *
+```
 
 ---
 
-# 👨‍💻 Author
+# PostgreSQL Inspection
+
+Open PostgreSQL shell:
+
+```bash
+docker exec -it ap2-assignment-postgres-1 psql -U postgres
+```
+
+### Open database
+
+```sql
+\c payments
+```
+
+### Show payments
+
+```sql
+SELECT * FROM payments;
+```
+
+---
+
+# DLQ Testing
+
+Temporary test:
+
+```go
+msg.Nack(false, false)
+return
+```
+
+inside:
+
+notification-service/internal/consumer/consumer.go
+
+Then submit a payment.
+
+Failed messages will appear in:
+
+payment.completed.dlq
+
+---
+
+# Scaling Workers
+
+Run multiple notification workers:
+
+```bash
+docker compose up --scale notification-service=3
+```
+
+RabbitMQ automatically distributes messages between workers.
+
+---
+
+# Production Concepts Demonstrated
+
+* Event-driven architecture
+* Distributed systems
+* Message queues
+* Background workers
+* Reliable delivery
+* Dead Letter Queues
+* Cache-aside strategy
+* Idempotent consumers
+* Retry strategies
+* Exponential backoff
+* Graceful shutdown
+* Service isolation
+* Horizontal scalability
+
+---
+
+# Author
 
 Tamerlan Khassenov SE-2416
 
----
+Go • gRPC • RabbitMQ • Redis • PostgreSQL • Docker • Next.js
 
-# ⭐ Project Status
-
-```text
-Production-style educational microservices system
-```

@@ -27,6 +27,7 @@ func NewPaymentService(
 	db *sql.DB,
 	redis *redis.Client,
 ) *PaymentService {
+
 	return &PaymentService{
 		db:    db,
 		redis: redis,
@@ -47,7 +48,15 @@ func (s *PaymentService) Process(
 	)
 
 	_, err := s.db.Exec(
-		"INSERT INTO payments(order_id, amount, email, status) VALUES($1,$2,$3,$4)",
+		`
+		INSERT INTO payments(
+			order_id,
+			amount,
+			email,
+			status
+		)
+		VALUES($1,$2,$3,$4)
+		`,
 		orderID,
 		amount,
 		email,
@@ -67,7 +76,10 @@ func (s *PaymentService) Process(
 
 	data, _ := json.Marshal(payment)
 
-	key := fmt.Sprintf("payment:%d", orderID)
+	key := fmt.Sprintf(
+		"payment:%d",
+		orderID,
+	)
 
 	s.redis.Set(
 		context.Background(),
@@ -77,4 +89,73 @@ func (s *PaymentService) Process(
 	)
 
 	return "completed"
+}
+
+func (s *PaymentService) GetPayment(
+	orderID int32,
+) (*Payment, error) {
+
+	ctx := context.Background()
+
+	key := fmt.Sprintf(
+		"payment:%d",
+		orderID,
+	)
+
+	cached, err := s.redis.Get(
+		ctx,
+		key,
+	).Result()
+
+	if err == nil {
+		log.Println("CACHE HIT")
+
+		var payment Payment
+
+		json.Unmarshal(
+			[]byte(cached),
+			&payment,
+		)
+
+		return &payment, nil
+	}
+
+	log.Println("CACHE MISS")
+
+	row := s.db.QueryRow(
+		`
+		SELECT
+			order_id,
+			amount,
+			email,
+			status
+		FROM payments
+		WHERE order_id = $1
+		`,
+		orderID,
+	)
+
+	var payment Payment
+
+	err = row.Scan(
+		&payment.OrderID,
+		&payment.Amount,
+		&payment.Email,
+		&payment.Status,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	data, _ := json.Marshal(payment)
+
+	s.redis.Set(
+		ctx,
+		key,
+		data,
+		10*time.Minute,
+	)
+
+	return &payment, nil
 }

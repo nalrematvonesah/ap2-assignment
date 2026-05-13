@@ -36,12 +36,23 @@ func NewConsumer(
 	}
 }
 
-func (c *Consumer) Handle(msg amqp.Delivery) {
+func (c *Consumer) Handle(
+	msg amqp.Delivery,
+) {
+
 	var event Event
 
-	err := json.Unmarshal(msg.Body, &event)
+	err := json.Unmarshal(
+		msg.Body,
+		&event,
+	)
+
 	if err != nil {
-		log.Println("invalid message:", err)
+		log.Println(
+			"invalid message:",
+			err,
+		)
+
 		msg.Nack(false, false)
 		return
 	}
@@ -50,19 +61,30 @@ func (c *Consumer) Handle(msg amqp.Delivery) {
 
 	key := "event:" + event.EventID
 
-	exists, _ := c.redis.Exists(ctx, key).Result()
+	exists, _ := c.redis.Exists(
+		ctx,
+		key,
+	).Result()
 
 	if exists == 1 {
-		log.Println("duplicate event:", event.EventID)
+		log.Println(
+			"duplicate event:",
+			event.EventID,
+		)
+
 		msg.Ack(false)
 		return
 	}
 
-	log.Println("Received event:", event)
+	log.Println(
+		"Received event:",
+		event,
+	)
 
 	var processErr error
 
 	for attempt := 1; attempt <= 3; attempt++ {
+
 		processErr = c.service.SendNotification(
 			service.Event(event),
 		)
